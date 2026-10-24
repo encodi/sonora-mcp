@@ -1,24 +1,26 @@
-# Project board (design)
+# Project board
 
-GitHub Projects v2 needs the `project` OAuth scope, which the bot account used to bootstrap this repo does
-not have. **Until the board exists, planning uses milestones + labels** (every issue has a milestone,
-`type:*`, `priority:*`, `area:*`).
+**Board: [Sonora MCP – Roadmap](https://github.com/users/encodi/projects/1)** (GitHub Projects v2, public,
+linked to this repository). It holds every issue of the repo; milestones + labels
+(`type:*`, `priority:*`, `area:*`) remain the source of truth for triage and are mirrored into the
+board fields `Sprint`, `Priority` and `Area`.
 
-## Create it (maintainer, one time)
+## How it was set up
 
 ```bash
-gh auth refresh -s project          # run in your own interactive session
-gh project create --owner encodi --title "Sonora MCP"
-gh project link <number> --owner encodi --repo encodi/sonora-mcp
+gh project create --owner encodi --title "Sonora MCP – Roadmap"
+gh project link 1 --owner encodi --repo encodi/sonora-mcp
+gh project edit 1 --owner encodi --visibility PUBLIC
 ```
 
-Then in the web UI: add the **Status** single-select field with the columns below, enable the built-in
-workflows (_Item added to project → Backlog_, _Item closed → Done_, _Pull request merged → Done_), and
-turn on auto-add for `encodi/sonora-mcp` issues and PRs.
+The **Status** options, the extra fields and the views were configured through the GraphQL API
+(`updateProjectV2Field`, `createProjectV2View`). Still to do in the web UI (not exposed by the API):
+enable the built-in workflows (_Item added to project → Backlog_, _Item closed → Done_,
+_Pull request merged → Done_) and auto-add for `encodi/sonora-mcp` issues and PRs.
 
 ## Layout
 
-Board view "Sprint board", grouped by **Status**:
+Board view "Sprint board", grouped by **Status** (done):
 
 | Column          | Meaning                                               | Entry rule                          | WIP limit |
 | --------------- | ----------------------------------------------------- | ----------------------------------- | --------- |
@@ -28,17 +30,18 @@ Board view "Sprint board", grouped by **Status**:
 | **In review**   | PR open, CI running / awaiting review                 | PR linked                           | 3         |
 | **Done**        | Merged and closed (meets Definition of Done)          | PR merged, issue closed             | –         |
 
-Extra views:
+Other views:
 
-- **Backlog table**: all items, sorted by `Priority`, grouped by Milestone.
-- **Roadmap**: timeline by Milestone (Sprint 1 → Sprint 3 → v0.1.0).
-- **Bugs**: filter `label:type:bug`, sorted by priority.
+- **Backlog table**: all items as a table.
+- **Roadmap**: timeline view (the API cannot set its date fields; configure them in the UI if needed).
+- **Bugs**: filter `label:"type:bug"`.
 
-Custom fields: `Priority` (from `priority:*`), `Area` (from `area:*`), `Estimate` (S/M/L).
+Custom fields: `Sprint` (milestone mirror), `Priority` (P0–P3, from `priority:*`) and `Area` (from the first
+`area:*` label). Grouping and sorting of the table views are not exposed by the API; set them in the UI.
 
-## Mapping while there is no board
+## Mapping to labels and milestones
 
-| Board column | Equivalent today                                            |
+| Board column | Equivalent label / milestone                                |
 | ------------ | ----------------------------------------------------------- |
 | Backlog      | Open issue without `ready`, or milestone of a future sprint |
 | Sprint       | Open issue with `ready` in the current sprint milestone     |
