@@ -2,7 +2,7 @@ import { z } from "zod";
 import { SCOPE } from "./config.js";
 import { SonoraError, SpotifyApiError } from "./errors.js";
 import type { FetchLike } from "./auth.js";
-import { parsePlaylistId, toTrackUri } from "./spotify-ids.js";
+import { parsePlaylistId, toPlayableUri, toTrackUri } from "./spotify-ids.js";
 import type { TokenProvider } from "./token-manager.js";
 
 export const API_BASE = "https://api.spotify.com/v1";
@@ -72,6 +72,16 @@ const SavedTracksResponse = z.object({
   total: z.number().optional(),
 });
 const BooleanList = z.array(z.boolean());
+const CreatedPlaylist = z.object({
+  id: z.string(),
+  name: z.string(),
+  uri: z.string(),
+  public: z.boolean().nullish(),
+  collaborative: z.boolean().nullish(),
+  external_urls: z.object({ spotify: z.string().optional() }).optional(),
+});
+const SnapshotResponse = z.object({ snapshot_id: z.string() });
+export type CreatedPlaylistData = z.infer<typeof CreatedPlaylist>;
 
 const PlaylistItem = z.object({
   added_at: z.string().nullish(),
@@ -334,6 +344,65 @@ export class SpotifyClient {
     return { items, total: parsed.data.total ?? offset + items.length, limit, offset };
   }
 
+  /**
+   * Creates an (empty) playlist for the current user (`POST /me/playlists`). Private unless
+   * `public: true`; `collaborative` requires a private playlist (Spotify rule, checked locally).
+   */
+  async createPlaylist(args: {
+    name: string;
+    description?: string;
+    public?: boolean;
+    collaborative?: boolean;
+  }): Promise<CreatedPlaylistData> {
+    const name = args.name.trim();
+    if (name.length < 1 || name.length > PLAYLIST_NAME_MAX) {
+      throw new SonoraError("config", `Playlist name must be 1-${PLAYLIST_NAME_MAX} characters.`);
+    }
+    const isPublic = args.public ?? false;
+    const collaborative = args.collaborative ?? false;
+    if (collaborative && isPublic) {
+      throw new SonoraError("config", "A collaborative playlist cannot be public.");
+    }
+    const raw = await this.request("POST", "/me/playlists", {
+      scopes: PLAYLIST_WRITE_SCOPES,
+      body: {
+        name,
+        public: isPublic,
+        collaborative,
+        ...(args.description ? { description: args.description } : {}),
+      },
+    });
+    const parsed = CreatedPlaylist.safeParse(raw);
+    if (!parsed.success) throw unexpected("created playlist");
+    return parsed.data;
+  }
+
+  /**
+   * Appends (or inserts at `position`) tracks/episodes to a playlist the user owns or collaborates
+   * on (`POST /playlists/{id}/items`, 1-100 per call). Returns the new `snapshot_id`.
+   */
+  async addItemsToPlaylist(args: {
+    playlistId: string;
+    uris: readonly string[];
+    position?: number;
+  }): Promise<{ added: number; snapshotId: string }> {
+    const id = parsePlaylistId(args.playlistId);
+    const uris = args.uris.map(toPlayableUri);
+    if (uris.length < 1 || uris.length > PLAYLIST_ADD_MAX) {
+      throw new SonoraError("config", `Pass between 1 and ${PLAYLIST_ADD_MAX} items per call.`);
+    }
+    if (args.position !== undefined && (!Number.isInteger(args.position) || args.position < 0)) {
+      throw new SonoraError("config", "position must be an integer >= 0.");
+    }
+    const raw = await this.request("POST", `/playlists/${id}/items`, {
+      scopes: PLAYLIST_WRITE_SCOPES,
+      body: { uris, ...(args.position !== undefined ? { position: args.position } : {}) },
+    });
+    const parsed = SnapshotResponse.safeParse(raw);
+    if (!parsed.success) throw unexpected("playlist update");
+    return { added: uris.length, snapshotId: parsed.data.snapshot_id };
+  }
+
   /** Saves tracks to the library (`PUT /me/library`, 1-40 per call; ids/URIs/links accepted). */
   async saveTracks(tracks: readonly string[]): Promise<string[]> {
     const uris = checkLibraryBatch(tracks);
@@ -503,6 +572,10 @@ export class SpotifyClient {
     }
   }
 }
+
+export const PLAYLIST_NAME_MAX = 100;
+export const PLAYLIST_ADD_MAX = 100;
+const PLAYLIST_WRITE_SCOPES = [SCOPE.playlistModifyPrivate, SCOPE.playlistModifyPublic];
 
 /** Library endpoints take 1-40 URIs per call; returns them normalised and de-duplicated. */
 export const LIBRARY_MAX_URIS = 40;

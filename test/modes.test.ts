@@ -27,6 +27,8 @@ describe("tools per mode (#11)", () => {
       ...read,
       "get_playlists",
       "get_playlist_items",
+      "create_playlist",
+      "add_items_to_playlist",
     ]);
   });
 

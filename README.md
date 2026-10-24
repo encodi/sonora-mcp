@@ -21,20 +21,22 @@ Sprint 1 is implemented (see [Roadmap](#roadmap)). Not yet published to npm: ins
 
 ## Tools
 
-| Tool                  | Mode                   | Description                                                                                |
-| --------------------- | ---------------------- | ------------------------------------------------------------------------------------------ |
-| `search`              | all                    | Search tracks, albums, artists, playlists (`types` array, `limit` 1–10, `offset` paging)   |
-| `now_playing`         | all                    | Current track/episode, progress and device                                                 |
-| `play`                | `playback`             | Start/resume playback: Spotify URI, `offset`, `position_ms`, `device_id`, `transfer_first` |
-| `pause`               | `playback`             | Pause playback                                                                             |
-| `list_devices`        | all                    | List Spotify Connect devices (id, name, type, active)                                      |
-| `transfer_playback`   | `playback`             | Move playback to a device (`device_id` from `list_devices`, optional `play`)               |
-| `get_playlists`       | `library`, `playlists` | List the user's playlists (paged, limit ≤ 50)                                              |
-| `get_playlist_items`  | `library`, `playlists` | Items of a playlist you own/collaborate on (id, URI or link; paged, limit ≤ 50)            |
-| `get_saved_tracks`    | `library`              | Saved ("liked") tracks, newest first (paged, limit ≤ 50)                                   |
-| `check_saved_tracks`  | `library`              | Which of up to 40 tracks are saved                                                         |
-| `save_tracks`         | `library`              | Save up to 40 tracks (`PUT /me/library`)                                                   |
-| `remove_saved_tracks` | `library`              | Un-save up to 40 tracks (`DELETE /me/library`)                                             |
+| Tool                    | Mode                   | Description                                                                                       |
+| ----------------------- | ---------------------- | ------------------------------------------------------------------------------------------------- |
+| `search`                | all                    | Search tracks, albums, artists, playlists (`types` array, `limit` 1–10, `offset` paging)          |
+| `now_playing`           | all                    | Current track/episode, progress and device                                                        |
+| `play`                  | `playback`             | Start/resume playback: Spotify URI, `offset`, `position_ms`, `device_id`, `transfer_first`        |
+| `pause`                 | `playback`             | Pause playback                                                                                    |
+| `list_devices`          | all                    | List Spotify Connect devices (id, name, type, active)                                             |
+| `transfer_playback`     | `playback`             | Move playback to a device (`device_id` from `list_devices`, optional `play`)                      |
+| `get_playlists`         | `library`, `playlists` | List the user's playlists (paged, limit ≤ 50)                                                     |
+| `get_playlist_items`    | `library`, `playlists` | Items of a playlist you own/collaborate on (id, URI or link; paged, limit ≤ 50)                   |
+| `get_saved_tracks`      | `library`              | Saved ("liked") tracks, newest first (paged, limit ≤ 50)                                          |
+| `check_saved_tracks`    | `library`              | Which of up to 40 tracks are saved                                                                |
+| `save_tracks`           | `library`              | Save up to 40 tracks (`PUT /me/library`)                                                          |
+| `remove_saved_tracks`   | `library`              | Un-save up to 40 tracks (`DELETE /me/library`)                                                    |
+| `create_playlist`       | `playlists`            | Create an empty playlist (private by default; `POST /me/playlists`)                               |
+| `add_items_to_playlist` | `playlists`            | Add up to 100 tracks/episodes to a playlist you own/collaborate on (`POST /playlists/{id}/items`) |
 
 ## Modes and scopes
 
