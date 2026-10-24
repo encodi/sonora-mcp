@@ -14,8 +14,16 @@ describe("tools per mode (#11)", () => {
   it("read-only never exposes library/playlist tools; library and playlists never expose playback write tools", () => {
     const read = ["search", "now_playing", "list_devices"];
     expect(toolNamesForMode("read-only")).toEqual(read);
-    expect(toolNamesForMode(["read-only", "library"])).toEqual([...read, "get_playlists"]);
-    expect(toolNamesForMode(["playlists"])).toEqual([...read, "get_playlists"]);
+    expect(toolNamesForMode(["read-only", "library"])).toEqual([
+      ...read,
+      "get_playlists",
+      "get_playlist_items",
+    ]);
+    expect(toolNamesForMode(["playlists"])).toEqual([
+      ...read,
+      "get_playlists",
+      "get_playlist_items",
+    ]);
   });
 
   it("playback (alone or combined) adds play, pause and transfer_playback", async () => {
