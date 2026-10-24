@@ -10,6 +10,7 @@ versioning: [SemVer](https://semver.org).
 - Project skeleton, CI, governance docs.
 - PKCE login/logout/status, secure token storage with refresh.
 - Tools: `search`, `now_playing`, `play`, `pause` (playback mode only).
+- Tools `list_devices` (all modes) and `transfer_playback` (playback mode) (#18).
 
 ### Fixed
 

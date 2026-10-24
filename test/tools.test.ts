@@ -1,45 +1,29 @@
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { describe, expect, it, vi } from "vitest";
-import type { Mode } from "../src/config.js";
-import { createServer } from "../src/server.js";
-import { SpotifyClient } from "../src/spotify-client.js";
+import { describe, expect, it } from "vitest";
 import { toolNamesForMode } from "../src/tools/index.js";
-import { jsonResponse, staticTokens } from "./helpers.js";
-
-async function connect(mode: Mode, responses: Response[] = []) {
-  const fetchMock = vi.fn(() =>
-    Promise.resolve(responses.shift() ?? new Response(null, { status: 204 })),
-  );
-  const spotify = new SpotifyClient({
-    tokens: staticTokens(),
-    fetch: fetchMock,
-  });
-  const server = createServer({ client: spotify, mode, version: "0.0.0-test" });
-  const [clientT, serverT] = InMemoryTransport.createLinkedPair();
-  const client = new Client({ name: "test", version: "0.0.0" });
-  await Promise.all([server.connect(serverT), client.connect(clientT)]);
-  return { client, fetchMock };
-}
-
-const text = (result: unknown): string =>
-  ((result as { content: { text: string }[] }).content[0] as { text: string }).text;
+import { connect, jsonResponse, text } from "./helpers.js";
 
 describe("tool registration by mode", () => {
-  it("read-only registers only search and now_playing (no write tools)", async () => {
+  it("read-only registers only read tools (no write tools)", async () => {
     const { client } = await connect("read-only");
     const names = (await client.listTools()).tools.map((t) => t.name).sort();
-    expect(names).toEqual(["now_playing", "search"]);
+    expect(names).toEqual(["list_devices", "now_playing", "search"]);
     expect(names).toEqual([...toolNamesForMode("read-only")].sort());
     await expect(client.callTool({ name: "play", arguments: {} })).resolves.toMatchObject({
       isError: true,
     });
   });
 
-  it("playback also registers play and pause", async () => {
+  it("playback also registers the write tools", async () => {
     const { client } = await connect("playback");
     const tools = (await client.listTools()).tools;
-    expect(tools.map((t) => t.name).sort()).toEqual(["now_playing", "pause", "play", "search"]);
+    expect(tools.map((t) => t.name).sort()).toEqual([
+      "list_devices",
+      "now_playing",
+      "pause",
+      "play",
+      "search",
+      "transfer_playback",
+    ]);
     expect(tools.find((t) => t.name === "search")?.annotations?.readOnlyHint).toBe(true);
     expect(tools.find((t) => t.name === "play")?.annotations?.readOnlyHint).toBe(false);
   });
