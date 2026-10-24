@@ -12,10 +12,13 @@ import {
   registerLibraryWrite,
 } from "./library.js";
 import {
+  ADD_ITEMS_TOOL,
+  CREATE_PLAYLIST_TOOL,
   GET_PLAYLIST_ITEMS_TOOL,
   GET_PLAYLISTS_TOOL,
   registerPlaylistItems,
   registerPlaylists,
+  registerPlaylistWrite,
 } from "./playlists.js";
 import { PAUSE_TOOL, PLAY_TOOL, TRANSFER_PLAYBACK_TOOL, registerPlayback } from "./playback.js";
 import { SEARCH_TOOL, registerSearch } from "./search.js";
@@ -45,6 +48,11 @@ const TOOL_GROUPS: readonly ToolGroup[] = [
     names: [GET_PLAYLIST_ITEMS_TOOL],
     scopes: [SCOPE.playlistReadPrivate],
     register: registerPlaylistItems,
+  },
+  {
+    names: [CREATE_PLAYLIST_TOOL, ADD_ITEMS_TOOL],
+    scopes: [SCOPE.playlistModifyPrivate, SCOPE.playlistModifyPublic],
+    register: registerPlaylistWrite,
   },
   {
     names: [GET_SAVED_TRACKS_TOOL, CHECK_SAVED_TRACKS_TOOL],

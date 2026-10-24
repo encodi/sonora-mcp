@@ -44,3 +44,24 @@ export function toTrackUri(input: string): string {
   }
   return `spotify:track:${id}`;
 }
+
+/**
+ * Normalises a track/episode id-less reference (`spotify:track|episode:<id>` URI or the matching
+ * open.spotify.com link) to a URI. Bare ids are rejected because the type would be ambiguous.
+ */
+export function toPlayableUri(input: string): string {
+  const value = input.trim();
+  const uri = /^spotify:(track|episode):([A-Za-z0-9]+)$/.exec(value);
+  const link =
+    /^https:\/\/open\.spotify\.com\/(?:intl-[a-z]+\/)?(track|episode)\/([A-Za-z0-9]+)(?:[?#].*)?$/.exec(
+      value,
+    );
+  const match = uri ?? link;
+  if (!match?.[1] || !match[2] || !BASE62_ID.test(match[2])) {
+    throw new SonoraError(
+      "config",
+      `"${value.slice(0, 60)}" is not a spotify:track:<id> / spotify:episode:<id> URI or an open.spotify.com track/episode link.`,
+    );
+  }
+  return `spotify:${match[1]}:${match[2]}`;
+}

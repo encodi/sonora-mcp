@@ -16,6 +16,7 @@ versioning: [SemVer](https://semver.org).
 - Tool `get_playlists` (modes `library`, `playlists`): paged list (limit ≤ 50) of the user's playlists in a compact format (#12).
 - Tool `get_playlist_items` (modes `library`, `playlists`): paged items of a playlist via `/playlists/{id}/items` (Feb 2026 API), with a clear message for non-owned playlists (#13).
 - Tools `get_saved_tracks`, `check_saved_tracks`, `save_tracks` and `remove_saved_tracks` (mode `library`) using the Feb 2026 generic `/me/library` endpoints, max 40 tracks per call (#14).
+- Tools `create_playlist` and `add_items_to_playlist` (mode `playlists`): Feb 2026 endpoints `POST /me/playlists` and `POST /playlists/{id}/items`, private by default, max 100 items per call (#15).
 
 ### Fixed
 
