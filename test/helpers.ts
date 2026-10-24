@@ -64,7 +64,7 @@ export function jsonResponse(body: unknown, init: ResponseInit = {}): Response {
 }
 
 /** In-memory MCP client/server pair; `fetch` is mocked with the given responses (204 when exhausted). */
-export async function connect(mode: Mode, responses: Response[] = []) {
+export async function connect(mode: Mode | readonly Mode[], responses: Response[] = []) {
   const fetchMock = vi.fn<FetchLike>(() =>
     Promise.resolve(responses.shift() ?? new Response(null, { status: 204 })),
   );
@@ -73,7 +73,7 @@ export async function connect(mode: Mode, responses: Response[] = []) {
     fetch: fetchMock,
     sleep: () => Promise.resolve(),
   });
-  const server = createMcpServer({ client: spotify, mode, version: "0.0.0-test" });
+  const server = createMcpServer({ client: spotify, modes: mode, version: "0.0.0-test" });
   const [clientT, serverT] = InMemoryTransport.createLinkedPair();
   const client = new Client({ name: "test", version: "0.0.0" });
   await Promise.all([server.connect(serverT), client.connect(clientT)]);

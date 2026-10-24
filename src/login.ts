@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { exchangeCodeForTokens, buildAuthorizeUrl, type FetchLike } from "./auth.js";
 import { startCallbackServer } from "./callback-server.js";
-import { SCOPES_BY_MODE, type Config } from "./config.js";
+import { modeLabel, scopesForModes, type Config } from "./config.js";
 import { createCodeVerifier, createState } from "./pkce.js";
 import type { TokenStore } from "./token-store.js";
 
@@ -34,7 +34,7 @@ export interface LoginDeps {
 /** Authorization Code + PKCE flow. Resolves with the scopes granted. */
 export async function login(deps: LoginDeps): Promise<readonly string[]> {
   const { config } = deps;
-  const scopes = SCOPES_BY_MODE[config.mode];
+  const scopes = scopesForModes(config.modes);
   const codeVerifier = createCodeVerifier();
   const state = createState();
 
@@ -51,7 +51,7 @@ export async function login(deps: LoginDeps): Promise<readonly string[]> {
       state,
       codeVerifier,
     }).toString();
-    deps.print(`Mode: ${config.mode} (scopes: ${scopes.join(", ")})`);
+    deps.print(`Mode: ${modeLabel(config.modes)} (scopes: ${scopes.join(", ")})`);
     deps.print("Open this URL in your browser to authorize Sonora MCP:\n");
     deps.print(url + "\n");
     deps.print(`Waiting for the redirect on ${config.redirectUri} ...`);

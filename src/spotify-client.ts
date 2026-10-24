@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SCOPE } from "./config.js";
 import { SonoraError, SpotifyApiError } from "./errors.js";
 import type { FetchLike } from "./auth.js";
 import type { TokenProvider } from "./token-manager.js";
@@ -116,6 +117,8 @@ const compact = <T>(items: (T | null)[]): T[] => items.filter((i): i is T => i !
 interface RequestOptions {
   query?: Record<string, string | number | undefined>;
   body?: unknown;
+  /** Scopes this call needs beyond the read-only base; checked against the stored login first. */
+  scopes?: readonly string[];
 }
 
 export class SpotifyClient {
@@ -224,6 +227,7 @@ export class SpotifyClient {
     if (args.offset !== undefined) body = { ...body, offset: args.offset };
     if (args.positionMs !== undefined) body = { ...body, position_ms: args.positionMs };
     await this.request("PUT", "/me/player/play", {
+      scopes: [SCOPE.modifyPlayback],
       query: { device_id: args.deviceId },
       ...(body !== undefined && { body }),
     });
@@ -240,12 +244,16 @@ export class SpotifyClient {
   /** Moves playback to one device. Spotify accepts exactly one id in `device_ids`. */
   async transferPlayback(args: { deviceId: string; play?: boolean }): Promise<void> {
     await this.request("PUT", "/me/player", {
+      scopes: [SCOPE.modifyPlayback],
       body: { device_ids: [args.deviceId], ...(args.play !== undefined && { play: args.play }) },
     });
   }
 
   async pause(args: { deviceId?: string } = {}): Promise<void> {
-    await this.request("PUT", "/me/player/pause", { query: { device_id: args.deviceId } });
+    await this.request("PUT", "/me/player/pause", {
+      scopes: [SCOPE.modifyPlayback],
+      query: { device_id: args.deviceId },
+    });
   }
 
   private async request(
@@ -257,14 +265,20 @@ export class SpotifyClient {
     for (const [key, value] of Object.entries(options.query ?? {})) {
       if (value !== undefined) url.searchParams.set(key, String(value));
     }
-    let response = await this.send(method, url, options.body, await this.tokens.getAccessToken());
+    const scopeOptions = options.scopes !== undefined ? { scopes: options.scopes } : {};
+    let response = await this.send(
+      method,
+      url,
+      options.body,
+      await this.tokens.getAccessToken(scopeOptions),
+    );
     if (response.status === 401) {
       // Token may have been revoked/expired early: refresh once and retry.
       response = await this.send(
         method,
         url,
         options.body,
-        await this.tokens.getAccessToken({ forceRefresh: true }),
+        await this.tokens.getAccessToken({ ...scopeOptions, forceRefresh: true }),
       );
     }
     if (response.status === 204) return undefined;
