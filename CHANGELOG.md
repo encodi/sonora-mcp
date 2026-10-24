@@ -14,3 +14,4 @@ versioning: [SemVer](https://semver.org).
 ### Fixed
 
 - `search`: `types` is now documented as an array (single string accepted), the singular `type` is an alias, and unknown parameters are rejected instead of silently falling back to tracks (#32).
+- `now_playing` now distinguishes "no active device" from "active device with nothing loaded" and names the device in the latter case (#35).

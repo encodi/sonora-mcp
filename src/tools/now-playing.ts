@@ -16,15 +16,36 @@ export function registerNowPlaying(server: McpServer, client: SpotifyClient): vo
     () =>
       guarded(async () => {
         const state = await client.getPlayerState();
-        if (state === null || state.item === null || state.item === undefined) {
+        if (
+          state === null ||
+          ((state.item === null || state.item === undefined) && !state.device)
+        ) {
           return jsonResult({
             playing: false,
-            message: "Nothing is playing and no active device was found.",
+            activeDevice: false,
+            message:
+              "No active Spotify device. Open Spotify on a phone, computer or speaker and start playback once (or transfer playback to a device), then try again.",
+          });
+        }
+        if (state.item === null || state.item === undefined) {
+          const idle = state.device;
+          return jsonResult({
+            playing: false,
+            activeDevice: true,
+            device: idle
+              ? {
+                  name: idle.name,
+                  type: idle.type,
+                  volumePercent: idle.volume_percent ?? undefined,
+                }
+              : undefined,
+            message: `Device "${idle?.name ?? "unknown"}" is active, but nothing is loaded or playing on it.`,
           });
         }
         const { item, device } = state;
         return jsonResult({
           playing: state.is_playing,
+          activeDevice: true,
           type: item.type ?? state.currently_playing_type,
           name: item.name,
           artists: item.artists?.map((a) => a.name),
