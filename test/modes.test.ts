@@ -18,6 +18,10 @@ describe("tools per mode (#11)", () => {
       ...read,
       "get_playlists",
       "get_playlist_items",
+      "get_saved_tracks",
+      "check_saved_tracks",
+      "save_tracks",
+      "remove_saved_tracks",
     ]);
     expect(toolNamesForMode(["playlists"])).toEqual([
       ...read,

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { SCOPE } from "./config.js";
 import { SonoraError, SpotifyApiError } from "./errors.js";
 import type { FetchLike } from "./auth.js";
-import { parsePlaylistId } from "./spotify-ids.js";
+import { parsePlaylistId, toTrackUri } from "./spotify-ids.js";
 import type { TokenProvider } from "./token-manager.js";
 
 export const API_BASE = "https://api.spotify.com/v1";
@@ -66,6 +66,13 @@ const Playable = z.object({
   show: z.object({ name: z.string() }).optional(),
   external_urls: Urls,
 });
+const SavedTrack = z.object({ added_at: z.string().nullish(), track: Playable.nullish() });
+const SavedTracksResponse = z.object({
+  items: z.array(SavedTrack.nullable()),
+  total: z.number().optional(),
+});
+const BooleanList = z.array(z.boolean());
+
 const PlaylistItem = z.object({
   added_at: z.string().nullish(),
   is_local: z.boolean().optional(),
@@ -162,6 +169,10 @@ export interface Paged<T> {
   total: number;
   limit: number;
   offset: number;
+}
+export interface SavedTrackData {
+  addedAt: string | null;
+  track: z.infer<typeof Playable>;
 }
 export interface PlaylistItemData {
   position: number;
@@ -305,6 +316,56 @@ export class SpotifyClient {
     };
   }
 
+  /** The user's saved ("liked") tracks, newest first. */
+  async getSavedTracks(
+    args: { limit?: number; offset?: number } = {},
+  ): Promise<Paged<SavedTrackData>> {
+    const { limit, offset } = checkPage(args);
+    const raw = await this.request("GET", "/me/tracks", {
+      scopes: [SCOPE.libraryRead],
+      query: { limit, offset },
+    });
+    const parsed = SavedTracksResponse.safeParse(raw);
+    if (!parsed.success) throw unexpected("saved tracks");
+    const items: SavedTrackData[] = [];
+    for (const entry of parsed.data.items) {
+      if (entry?.track) items.push({ addedAt: entry.added_at ?? null, track: entry.track });
+    }
+    return { items, total: parsed.data.total ?? offset + items.length, limit, offset };
+  }
+
+  /** Saves tracks to the library (`PUT /me/library`, 1-40 per call; ids/URIs/links accepted). */
+  async saveTracks(tracks: readonly string[]): Promise<string[]> {
+    const uris = checkLibraryBatch(tracks);
+    await this.request("PUT", "/me/library", {
+      scopes: [SCOPE.libraryModify],
+      query: { uris: uris.join(",") },
+    });
+    return uris;
+  }
+
+  /** Removes tracks from the library (`DELETE /me/library`, 1-40 per call). */
+  async removeSavedTracks(tracks: readonly string[]): Promise<string[]> {
+    const uris = checkLibraryBatch(tracks);
+    await this.request("DELETE", "/me/library", {
+      scopes: [SCOPE.libraryModify],
+      query: { uris: uris.join(",") },
+    });
+    return uris;
+  }
+
+  /** Which of the tracks are saved (`GET /me/library/contains`, same order as the input). */
+  async checkSavedTracks(tracks: readonly string[]): Promise<{ uri: string; saved: boolean }[]> {
+    const uris = checkLibraryBatch(tracks);
+    const raw = await this.request("GET", "/me/library/contains", {
+      scopes: [SCOPE.libraryRead],
+      query: { uris: uris.join(",") },
+    });
+    const parsed = BooleanList.safeParse(raw);
+    if (!parsed.success || parsed.data.length !== uris.length) throw unexpected("library contains");
+    return uris.map((uri, i) => ({ uri, saved: parsed.data[i] ?? false }));
+  }
+
   /** `null` when nothing is playing / no active device (HTTP 204). */
   async getPlayerState(): Promise<PlayerStateData | null> {
     const raw = await this.request("GET", "/me/player", {
@@ -441,6 +502,16 @@ export class SpotifyClient {
       );
     }
   }
+}
+
+/** Library endpoints take 1-40 URIs per call; returns them normalised and de-duplicated. */
+export const LIBRARY_MAX_URIS = 40;
+function checkLibraryBatch(tracks: readonly string[]): string[] {
+  const uris = [...new Set(tracks.map(toTrackUri))];
+  if (uris.length < 1 || uris.length > LIBRARY_MAX_URIS) {
+    throw new SonoraError("config", `Pass between 1 and ${LIBRARY_MAX_URIS} tracks per call.`);
+  }
+  return uris;
 }
 
 /** Validates paging locally (clear message instead of Spotify's bare 400). */

@@ -23,3 +23,24 @@ export function parsePlaylistId(input: string): string {
   }
   return id;
 }
+
+/**
+ * Normalises a track id, `spotify:track:<id>` URI or open.spotify.com track link to a
+ * `spotify:track:<id>` URI (what the library endpoints take in `uris`).
+ */
+export function toTrackUri(input: string): string {
+  const value = input.trim();
+  const uri = /^spotify:track:([A-Za-z0-9]+)$/.exec(value);
+  const link =
+    /^https:\/\/open\.spotify\.com\/(?:intl-[a-z]+\/)?track\/([A-Za-z0-9]+)(?:[?#].*)?$/.exec(
+      value,
+    );
+  const id = uri?.[1] ?? link?.[1] ?? value;
+  if (!BASE62_ID.test(id)) {
+    throw new SonoraError(
+      "config",
+      `"${value.slice(0, 60)}" is not a Spotify track id, spotify:track:<id> URI or open.spotify.com track link.`,
+    );
+  }
+  return `spotify:track:${id}`;
+}
