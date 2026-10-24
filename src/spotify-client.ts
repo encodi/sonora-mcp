@@ -2,6 +2,7 @@ import { z } from "zod";
 import { SCOPE } from "./config.js";
 import { SonoraError, SpotifyApiError } from "./errors.js";
 import type { FetchLike } from "./auth.js";
+import { parsePlaylistId } from "./spotify-ids.js";
 import type { TokenProvider } from "./token-manager.js";
 
 export const API_BASE = "https://api.spotify.com/v1";
@@ -52,6 +53,29 @@ const Playlist = z.object({
   description: z.string().nullish(),
   owner: z.object({ display_name: z.string().nullish() }).optional(),
   external_urls: Urls,
+});
+
+const Playable = z.object({
+  id: z.string().nullish(),
+  name: z.string(),
+  uri: z.string(),
+  type: z.string().optional(),
+  duration_ms: z.number().optional(),
+  artists: z.array(ArtistRef).optional(),
+  album: z.object({ name: z.string() }).optional(),
+  show: z.object({ name: z.string() }).optional(),
+  external_urls: Urls,
+});
+const PlaylistItem = z.object({
+  added_at: z.string().nullish(),
+  is_local: z.boolean().optional(),
+  // Feb 2026: `track` was renamed `item` (the old name is deprecated but may still be sent).
+  item: Playable.nullish(),
+  track: Playable.nullish(),
+});
+const PlaylistItemsResponse = z.object({
+  items: z.array(PlaylistItem.nullable()),
+  total: z.number().optional(),
 });
 
 // Spotify may return `null` entries inside item arrays; drop them.
@@ -139,6 +163,12 @@ export interface Paged<T> {
   limit: number;
   offset: number;
 }
+export interface PlaylistItemData {
+  position: number;
+  addedAt: string | null;
+  isLocal: boolean;
+  playable: z.infer<typeof Playable>;
+}
 export type PlayerStateData = z.infer<typeof PlayerState>;
 export type DeviceData = z.infer<typeof DevicesResponse>["devices"][number];
 
@@ -219,6 +249,60 @@ export class SpotifyClient {
     if (!parsed.success) throw unexpected("playlists");
     const items = compact(parsed.data.items);
     return { items, total: parsed.data.total ?? offset + items.length, limit, offset };
+  }
+
+  /**
+   * Items of a playlist. Since Feb 2026 Spotify only returns them for playlists the
+   * user owns or collaborates on. Entries whose content is gone are skipped
+   * (`skipped` counts them); `position` is the item's index in the playlist.
+   */
+  async getPlaylistItems(args: {
+    playlistId: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<Paged<PlaylistItemData> & { skipped: number }> {
+    const { limit, offset } = checkPage(args);
+    const id = parsePlaylistId(args.playlistId);
+    let raw: unknown;
+    try {
+      raw = await this.request("GET", `/playlists/${id}/items`, {
+        scopes: [SCOPE.playlistReadPrivate],
+        query: { limit, offset, additional_types: "track,episode" },
+      });
+    } catch (error) {
+      if (error instanceof SpotifyApiError && error.status === 403) {
+        throw new SpotifyApiError(
+          403,
+          "Spotify refused to return this playlist's items (403). Since Feb 2026 the items are only available for playlists you own or collaborate on (not for followed or Spotify-made playlists). Also check that your login includes playlist-read-private (`login --mode library`).",
+          { reason: error.reason },
+        );
+      }
+      throw error;
+    }
+    const parsed = PlaylistItemsResponse.safeParse(raw);
+    if (!parsed.success) throw unexpected("playlist items");
+    const items: PlaylistItemData[] = [];
+    let skipped = 0;
+    parsed.data.items.forEach((entry, index) => {
+      const playable = entry?.item ?? entry?.track;
+      if (!entry || !playable) {
+        skipped += 1;
+        return;
+      }
+      items.push({
+        position: offset + index,
+        addedAt: entry.added_at ?? null,
+        isLocal: entry.is_local ?? false,
+        playable,
+      });
+    });
+    return {
+      items,
+      skipped,
+      total: parsed.data.total ?? offset + parsed.data.items.length,
+      limit,
+      offset,
+    };
   }
 
   /** `null` when nothing is playing / no active device (HTTP 204). */
@@ -302,7 +386,7 @@ export class SpotifyClient {
   }
 
   private async request(
-    method: "GET" | "PUT",
+    method: "GET" | "PUT" | "POST" | "DELETE",
     path: string,
     options: RequestOptions = {},
   ): Promise<unknown> {

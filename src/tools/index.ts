@@ -3,7 +3,12 @@ import { SCOPE, scopesForModes, type Mode } from "../config.js";
 import type { SpotifyClient } from "../spotify-client.js";
 import { LIST_DEVICES_TOOL, registerDevices } from "./devices.js";
 import { NOW_PLAYING_TOOL, registerNowPlaying } from "./now-playing.js";
-import { GET_PLAYLISTS_TOOL, registerPlaylists } from "./playlists.js";
+import {
+  GET_PLAYLIST_ITEMS_TOOL,
+  GET_PLAYLISTS_TOOL,
+  registerPlaylistItems,
+  registerPlaylists,
+} from "./playlists.js";
 import { PAUSE_TOOL, PLAY_TOOL, TRANSFER_PLAYBACK_TOOL, registerPlayback } from "./playback.js";
 import { SEARCH_TOOL, registerSearch } from "./search.js";
 
@@ -27,6 +32,11 @@ const TOOL_GROUPS: readonly ToolGroup[] = [
     names: [GET_PLAYLISTS_TOOL],
     scopes: [SCOPE.playlistReadPrivate, SCOPE.playlistReadCollaborative],
     register: registerPlaylists,
+  },
+  {
+    names: [GET_PLAYLIST_ITEMS_TOOL],
+    scopes: [SCOPE.playlistReadPrivate],
+    register: registerPlaylistItems,
   },
   {
     names: [PLAY_TOOL, PAUSE_TOOL, TRANSFER_PLAYBACK_TOOL],

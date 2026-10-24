@@ -14,6 +14,7 @@ versioning: [SemVer](https://semver.org).
 - `play`: `offset` (album/playlist), `position_ms` and `transfer_first` (wake a device before playing); README troubleshooting for silent Android devices (#34).
 - Modes `library` and `playlists`, combinable with commas (`--mode library,playback`); per-tool scope check with a clear `login --mode ...` error; ADR 0001 (#11).
 - Tool `get_playlists` (modes `library`, `playlists`): paged list (limit ≤ 50) of the user's playlists in a compact format (#12).
+- Tool `get_playlist_items` (modes `library`, `playlists`): paged items of a playlist via `/playlists/{id}/items` (Feb 2026 API), with a clear message for non-owned playlists (#13).
 
 ### Fixed
 
