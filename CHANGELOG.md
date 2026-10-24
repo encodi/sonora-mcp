@@ -12,6 +12,7 @@ versioning: [SemVer](https://semver.org).
 - Tools: `search`, `now_playing`, `play`, `pause` (playback mode only).
 - Tools `list_devices` (all modes) and `transfer_playback` (playback mode) (#18).
 - `play`: `offset` (album/playlist), `position_ms` and `transfer_first` (wake a device before playing); README troubleshooting for silent Android devices (#34).
+- Modes `library` and `playlists`, combinable with commas (`--mode library,playback`); per-tool scope check with a clear `login --mode ...` error; ADR 0001 (#11).
 
 ### Fixed
 

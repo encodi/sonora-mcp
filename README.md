@@ -32,14 +32,21 @@ Sprint 1 is implemented (see [Roadmap](#roadmap)). Not yet published to npm: ins
 
 ## Modes and scopes
 
-| Mode (default first) | Scopes requested                                          | Tools                                   |
-| -------------------- | --------------------------------------------------------- | --------------------------------------- |
-| `read-only`          | `user-read-playback-state`, `user-read-currently-playing` | `search`, `now_playing`, `list_devices` |
-| `playback`           | the two above + `user-modify-playback-state`              | + `play`, `pause`, `transfer_playback`  |
+Modes are **additive** and can be combined with commas, for example `--mode library,playback`.
+Design and trade-offs: [ADR 0001](docs/adr/0001-modes-and-scopes.md).
 
-Choose with `SONORA_MODE` or `--mode` (applies to both `login` and `serve`). If you log in as `read-only` and
-later start the server as `playback`, tools return a clear message asking you to run
-`sonora-mcp login --mode playback`.
+| Mode (default first) | Scopes added on top of the base                                                                                                                  | Tools                                                                       |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
+| `read-only`          | base: `user-read-playback-state`, `user-read-currently-playing`                                                                                  | `search`, `now_playing`, `list_devices`                                     |
+| `library`            | `user-library-read`, `user-library-modify`, `user-read-recently-played`, `user-top-read`, `playlist-read-private`, `playlist-read-collaborative` | + library, recently played, top items, read playlists (see the Tools table) |
+| `playlists`          | `playlist-read-private`, `playlist-read-collaborative`, `playlist-modify-private`, `playlist-modify-public`                                      | + create playlists and add items (see the Tools table)                      |
+| `playback`           | `user-modify-playback-state`                                                                                                                     | + `play`, `pause`, `transfer_playback`                                      |
+
+Choose with `SONORA_MODE` or `--mode` (applies to both `login` and `serve`). Spotify grants scopes at login,
+so **after changing the mode run `sonora-mcp login --mode <modes>` again** (it replaces the stored login) and
+restart your MCP client. Your existing `read-only` and `playback` logins keep working unchanged. If the stored
+login lacks a scope a tool needs, that tool returns a clear message with the exact `login --mode ...` command;
+tools that do not need the scope keep working. Write tools of a mode that is not enabled are not registered at all.
 
 ## Requirements
 
@@ -81,6 +88,8 @@ npm run build
 node dist/index.js login
 # or, to enable play/pause
 node dist/index.js login --mode playback
+# modes combine (library + playlists + playback)
+node dist/index.js login --mode library,playlists,playback
 ```
 
 The command prints an authorization URL (and tries to open your browser; add `--no-open` to skip that).
@@ -119,13 +128,13 @@ The Client ID is not a secret, but keep it in your local client config, not in a
 
 ## Configuration reference
 
-| Variable                | Default      | Description                                                        |
-| ----------------------- | ------------ | ------------------------------------------------------------------ |
-| `SPOTIFY_CLIENT_ID`     | – (required) | Client ID of your Spotify app                                      |
-| `SPOTIFY_REDIRECT_PORT` | `8888`       | Loopback callback port (register the matching redirect URI)        |
-| `SONORA_MODE`           | `read-only`  | `read-only` or `playback`                                          |
-| `SONORA_LOG_LEVEL`      | `info`       | `error`, `warn`, `info`, `debug` (logs go to **stderr**, redacted) |
-| `XDG_CONFIG_HOME`       | `~/.config`  | Base directory for `sonora-mcp/tokens.json`                        |
+| Variable                | Default      | Description                                                                  |
+| ----------------------- | ------------ | ---------------------------------------------------------------------------- |
+| `SPOTIFY_CLIENT_ID`     | – (required) | Client ID of your Spotify app                                                |
+| `SPOTIFY_REDIRECT_PORT` | `8888`       | Loopback callback port (register the matching redirect URI)                  |
+| `SONORA_MODE`           | `read-only`  | `read-only`, `library`, `playlists`, `playback` (comma-separated to combine) |
+| `SONORA_LOG_LEVEL`      | `info`       | `error`, `warn`, `info`, `debug` (logs go to **stderr**, redacted)           |
+| `XDG_CONFIG_HOME`       | `~/.config`  | Base directory for `sonora-mcp/tokens.json`                                  |
 
 ## Troubleshooting
 

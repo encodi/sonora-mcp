@@ -5,10 +5,11 @@ import { registerTools } from "./tools/index.js";
 
 export function createServer(args: {
   client: SpotifyClient;
-  mode: Mode;
+  /** One mode or a set of modes. */
+  modes: Mode | readonly Mode[];
   version: string;
 }): McpServer {
   const server = new McpServer({ name: "sonora-mcp", version: args.version });
-  registerTools(server, args.client, args.mode);
+  registerTools(server, args.client, args.modes);
   return server;
 }

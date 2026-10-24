@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { SCOPES_BY_MODE, configDir, loadConfig } from "./config.js";
+import { MODES, configDir, loadConfig, modeLabel, scopesForModes } from "./config.js";
 import { SonoraError } from "./errors.js";
 import { createLogger, parseLogLevel } from "./logger.js";
 import { login, openBrowser } from "./login.js";
@@ -44,16 +44,22 @@ export function parseCli(argv: readonly string[]): ParsedCli {
 export const HELP = `sonora-mcp - Spotify MCP server (stdio, OAuth PKCE, no client secret)
 
 Usage:
-  sonora-mcp [serve] [--mode read-only|playback]   Start the MCP server on stdio (default)
-  sonora-mcp login   [--mode read-only|playback] [--no-open]
-                                                   Authorize with Spotify (opens/prints a URL)
+  sonora-mcp [serve] [--mode <modes>]              Start the MCP server on stdio (default)
+  sonora-mcp login   [--mode <modes>] [--no-open]  Authorize with Spotify (opens/prints a URL)
   sonora-mcp logout                                Delete the stored tokens
   sonora-mcp status                                Show the stored login (no secrets)
+
+Modes (additive; combine with commas, e.g. --mode library,playback):
+  read-only   (default) search, now_playing, list_devices
+  library     + saved tracks, recently played, top items, read playlists
+  playlists   + create playlists and add items
+  playback    + play, pause, transfer_playback
+  Changing the mode needs a new \`login --mode ...\` so Spotify grants the extra scopes.
 
 Environment:
   SPOTIFY_CLIENT_ID       Spotify app Client ID (required for serve/login)
   SPOTIFY_REDIRECT_PORT   Loopback callback port (default 8888)
-  SONORA_MODE             read-only (default) | playback
+  SONORA_MODE             ${MODES.join(" | ")} (comma-separated to combine)
   SONORA_LOG_LEVEL        error | warn | info (default) | debug
   XDG_CONFIG_HOME         Tokens live in $XDG_CONFIG_HOME/sonora-mcp (or ~/.config/sonora-mcp)
 `;
@@ -112,15 +118,16 @@ export async function run(argv: readonly string[], env: NodeJS.ProcessEnv): Prom
       const tokens = new TokenManager({
         store,
         clientId: config.clientId,
-        requiredScopes: SCOPES_BY_MODE[config.mode],
+        requiredScopes: scopesForModes(["read-only"]),
+        modes: config.modes,
       });
       const server = createServer({
         client: new SpotifyClient({ tokens }),
-        mode: config.mode,
+        modes: config.modes,
         version: readVersion(),
       });
       await server.connect(new StdioServerTransport());
-      logger.info(`MCP server running on stdio in "${config.mode}" mode.`);
+      logger.info(`MCP server running on stdio in "${modeLabel(config.modes)}" mode.`);
       return;
     }
   }
