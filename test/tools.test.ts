@@ -71,6 +71,78 @@ describe("tool behaviour", () => {
     expect(bad.isError).toBe(true);
   });
 
+  describe("search type selection (#32)", () => {
+    const artistsBody = {
+      artists: { items: [{ id: "1", name: "Soda Stereo", uri: "spotify:artist:1" }] },
+    };
+    const requestedType = (fetchMock: { mock: { calls: unknown[][] } }): string | null =>
+      new URL(String((fetchMock.mock.calls[0] as [URL])[0])).searchParams.get("type");
+
+    it("requests artists for types: ['artist']", async () => {
+      const { client, fetchMock } = await connect("read-only", [jsonResponse(artistsBody)]);
+      const res = await client.callTool({
+        name: "search",
+        arguments: { query: "Soda Stereo", types: ["artist"] },
+      });
+      expect(requestedType(fetchMock)).toBe("artist");
+      expect(JSON.parse(text(res))).toMatchObject({
+        artists: [{ name: "Soda Stereo" }],
+        types: ["artist"],
+      });
+    });
+
+    it("accepts the singular alias `type` (string or array) and a single-string `types`", async () => {
+      for (const args of [{ type: "artist" }, { type: ["artist"] }, { types: "artist" }]) {
+        const { client, fetchMock } = await connect("read-only", [jsonResponse(artistsBody)]);
+        const res = await client.callTool({
+          name: "search",
+          arguments: { query: "Soda Stereo", ...args },
+        });
+        expect(res.isError).toBeFalsy();
+        expect(requestedType(fetchMock)).toBe("artist");
+        expect(JSON.parse(text(res))).toMatchObject({ artists: [{ name: "Soda Stereo" }] });
+      }
+    });
+
+    it("still defaults to tracks when neither is given", async () => {
+      const { client, fetchMock } = await connect("read-only", [
+        jsonResponse({ tracks: { items: [] } }),
+      ]);
+      await client.callTool({ name: "search", arguments: { query: "x" } });
+      expect(requestedType(fetchMock)).toBe("track");
+    });
+
+    it("rejects both `types` and `type`, invalid values and unknown parameters (no silent fallback)", async () => {
+      const { client, fetchMock } = await connect("read-only");
+      const both = await client.callTool({
+        name: "search",
+        arguments: { query: "x", type: "artist", types: ["album"] },
+      });
+      expect(both.isError).toBe(true);
+      expect(text(both)).toMatch(/either `types` or its alias `type`/);
+      const badValue = await client.callTool({
+        name: "search",
+        arguments: { query: "x", type: "podcast" },
+      });
+      expect(badValue.isError).toBe(true);
+      const unknown = await client.callTool({
+        name: "search",
+        arguments: { query: "x", kind: "artist" },
+      });
+      expect(unknown.isError).toBe(true);
+      expect(text(unknown)).toMatch(/kind/);
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it("documents `types` as an array with an example", async () => {
+      const { client } = await connect("read-only");
+      const tool = (await client.listTools()).tools.find((t) => t.name === "search");
+      const props = tool?.inputSchema.properties as Record<string, { description?: string }>;
+      expect(props["types"]?.description).toMatch(/ARRAY.*\["artist"\]/);
+      expect(props["type"]).toBeDefined();
+    });
+  });
+
   it("now_playing reports nothing playing on 204", async () => {
     const { client } = await connect("read-only", [new Response(null, { status: 204 })]);
     const res = await client.callTool({ name: "now_playing", arguments: {} });
