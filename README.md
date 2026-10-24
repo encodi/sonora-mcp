@@ -21,14 +21,15 @@ Sprint 1 is implemented (see [Roadmap](#roadmap)). Not yet published to npm: ins
 
 ## Tools
 
-| Tool                | Mode       | Description                                                                                |
-| ------------------- | ---------- | ------------------------------------------------------------------------------------------ |
-| `search`            | all        | Search tracks, albums, artists, playlists (`types` array, `limit` 1–10, `offset` paging)   |
-| `now_playing`       | all        | Current track/episode, progress and device                                                 |
-| `play`              | `playback` | Start/resume playback: Spotify URI, `offset`, `position_ms`, `device_id`, `transfer_first` |
-| `pause`             | `playback` | Pause playback                                                                             |
-| `list_devices`      | all        | List Spotify Connect devices (id, name, type, active)                                      |
-| `transfer_playback` | `playback` | Move playback to a device (`device_id` from `list_devices`, optional `play`)               |
+| Tool                | Mode                   | Description                                                                                |
+| ------------------- | ---------------------- | ------------------------------------------------------------------------------------------ |
+| `search`            | all                    | Search tracks, albums, artists, playlists (`types` array, `limit` 1–10, `offset` paging)   |
+| `now_playing`       | all                    | Current track/episode, progress and device                                                 |
+| `play`              | `playback`             | Start/resume playback: Spotify URI, `offset`, `position_ms`, `device_id`, `transfer_first` |
+| `pause`             | `playback`             | Pause playback                                                                             |
+| `list_devices`      | all                    | List Spotify Connect devices (id, name, type, active)                                      |
+| `transfer_playback` | `playback`             | Move playback to a device (`device_id` from `list_devices`, optional `play`)               |
+| `get_playlists`     | `library`, `playlists` | List the user's playlists (paged, limit ≤ 50)                                              |
 
 ## Modes and scopes
 

@@ -11,11 +11,11 @@ import { toolNamesForMode } from "../src/tools/index.js";
 import { FAKE_CLIENT_ID, connect, sampleTokens, tempDir, text } from "./helpers.js";
 
 describe("tools per mode (#11)", () => {
-  it("read-only and library-only modes never expose playback write tools", () => {
+  it("read-only never exposes library/playlist tools; library and playlists never expose playback write tools", () => {
     const read = ["search", "now_playing", "list_devices"];
     expect(toolNamesForMode("read-only")).toEqual(read);
-    expect(toolNamesForMode(["read-only", "library"])).toEqual(read);
-    expect(toolNamesForMode(["playlists"])).toEqual(read);
+    expect(toolNamesForMode(["read-only", "library"])).toEqual([...read, "get_playlists"]);
+    expect(toolNamesForMode(["playlists"])).toEqual([...read, "get_playlists"]);
   });
 
   it("playback (alone or combined) adds play, pause and transfer_playback", async () => {
