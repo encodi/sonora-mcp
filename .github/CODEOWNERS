@@ -1,0 +1,8 @@
+# Default owner for everything. Security-sensitive paths are listed explicitly
+# so they never lose a reviewer if the default changes.
+*                          @encodi
+/src/auth.ts               @encodi
+/src/callback-server.ts    @encodi
+/src/token-store.ts        @encodi
+/.github/                  @encodi
+/SECURITY.md               @encodi

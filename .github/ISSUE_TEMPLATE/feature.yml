@@ -1,0 +1,35 @@
+name: Feature request
+description: Propose a new tool or capability
+labels: ["type:feature"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / user story
+      description: "As a <user>, I want <capability> so that <benefit>."
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Tool name, inputs, outputs. Which Spotify endpoint(s)?
+  - type: textarea
+    id: scopes
+    attributes:
+      label: Spotify scopes and mode
+      description: Minimal scopes needed. Is it read-only or does it write (needs a non-default mode)?
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      value: "- [ ] \n- [ ] \n- [ ] Tests (Spotify mocked)\n- [ ] Docs updated"
+    validations:
+      required: true
+  - type: textarea
+    id: devmode
+    attributes:
+      label: Development Mode availability
+      description: Is the endpoint available to Development Mode apps (Feb 2026 changes)? Link the docs.
