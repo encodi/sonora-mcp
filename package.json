@@ -1,0 +1,58 @@
+{
+  "name": "sonora-mcp",
+  "version": "0.1.0-dev",
+  "description": "Servidor MCP de Spotify (stdio) con OAuth PKCE sin Client Secret, scopes mínimos y tokens fuera del repo.",
+  "license": "MIT",
+  "author": "Enrique Coronado",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "bin": {
+    "sonora-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "start": "node dist/index.js"
+  },
+  "keywords": [
+    "mcp",
+    "spotify",
+    "model-context-protocol",
+    "typescript",
+    "oauth-pkce"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/encodi/sonora-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/encodi/sonora-mcp/issues"
+  },
+  "homepage": "https://github.com/encodi/sonora-mcp#readme",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.19.2",
+    "eslint": "^10.13.0",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.10",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.72.0",
+    "vitest": "^5.0.5"
+  }
+}

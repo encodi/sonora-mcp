@@ -1,0 +1,11 @@
+node_modules/
+dist/
+coverage/
+*.log
+.env
+.env.*
+!.env.example
+# Nunca versionar tokens ni credenciales
+*.token
+tokens.json
+.DS_Store
