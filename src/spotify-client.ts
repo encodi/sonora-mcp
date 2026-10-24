@@ -72,6 +72,21 @@ const SavedTracksResponse = z.object({
   total: z.number().optional(),
 });
 const BooleanList = z.array(z.boolean());
+const RecentlyPlayedResponse = z.object({
+  items: z.array(
+    z.object({ played_at: z.string().nullish(), track: Playable.nullish() }).nullable(),
+  ),
+  next: z.string().nullish(),
+  cursors: z.object({ before: z.string().nullish(), after: z.string().nullish() }).nullish(),
+});
+const TopTracksResponse = z.object({
+  items: z.array(Track.nullable()),
+  total: z.number().optional(),
+});
+const TopArtistsResponse = z.object({
+  items: z.array(Artist.nullable()),
+  total: z.number().optional(),
+});
 const CreatedPlaylist = z.object({
   id: z.string(),
   name: z.string(),
@@ -179,6 +194,10 @@ export interface Paged<T> {
   total: number;
   limit: number;
   offset: number;
+}
+export interface RecentPlayData {
+  playedAt: string | null;
+  track: z.infer<typeof Playable>;
 }
 export interface SavedTrackData {
   addedAt: string | null;
@@ -341,6 +360,72 @@ export class SpotifyClient {
     for (const entry of parsed.data.items) {
       if (entry?.track) items.push({ addedAt: entry.added_at ?? null, track: entry.track });
     }
+    return { items, total: parsed.data.total ?? offset + items.length, limit, offset };
+  }
+
+  /**
+   * Recently played tracks, newest first (`GET /me/player/recently-played`, limit <= 50).
+   * Cursor-based, not offset-based: pass `before` (unix ms) to get older plays, `after` for newer.
+   */
+  async getRecentlyPlayed(args: { limit?: number; before?: number; after?: number } = {}): Promise<{
+    items: RecentPlayData[];
+    nextBefore: string | null;
+    hasMore: boolean;
+  }> {
+    const limit = args.limit ?? PAGE_DEFAULT_LIMIT;
+    if (!Number.isInteger(limit) || limit < 1 || limit > PAGE_MAX_LIMIT) {
+      throw new SonoraError("config", `limit must be an integer between 1 and ${PAGE_MAX_LIMIT}.`);
+    }
+    if (args.before !== undefined && args.after !== undefined) {
+      throw new SonoraError("config", "Use either before or after, not both.");
+    }
+    for (const cursor of [args.before, args.after]) {
+      if (cursor !== undefined && (!Number.isSafeInteger(cursor) || cursor < 0)) {
+        throw new SonoraError("config", "before/after must be a unix timestamp in milliseconds.");
+      }
+    }
+    const raw = await this.request("GET", "/me/player/recently-played", {
+      scopes: [SCOPE.recentlyPlayed],
+      query: { limit, before: args.before, after: args.after },
+    });
+    const parsed = RecentlyPlayedResponse.safeParse(raw);
+    if (!parsed.success) throw unexpected("recently played");
+    const items: RecentPlayData[] = [];
+    for (const entry of parsed.data.items) {
+      if (entry?.track) items.push({ playedAt: entry.played_at ?? null, track: entry.track });
+    }
+    return {
+      items,
+      nextBefore: parsed.data.cursors?.before ?? null,
+      hasMore: Boolean(parsed.data.next),
+    };
+  }
+
+  /** The user's top tracks or artists (`GET /me/top/{type}`), offset-paged, limit <= 50. */
+  async getTopItems(args: {
+    type: "tracks" | "artists";
+    timeRange?: TimeRange;
+    limit?: number;
+    offset?: number;
+  }): Promise<Paged<z.infer<typeof Track> | z.infer<typeof Artist>>> {
+    const { limit, offset } = checkPage(args);
+    const timeRange = args.timeRange ?? "medium_term";
+    if (!TIME_RANGES.includes(timeRange)) {
+      throw new SonoraError("config", `time_range must be one of ${TIME_RANGES.join(", ")}.`);
+    }
+    const raw = await this.request(
+      "GET",
+      `/me/top/${args.type === "artists" ? "artists" : "tracks"}`,
+      {
+        scopes: [SCOPE.topRead],
+        query: { time_range: timeRange, limit, offset },
+      },
+    );
+    const parsed = (args.type === "artists" ? TopArtistsResponse : TopTracksResponse).safeParse(
+      raw,
+    );
+    if (!parsed.success) throw unexpected("top items");
+    const items = parsed.data.items.filter((item) => item !== null);
     return { items, total: parsed.data.total ?? offset + items.length, limit, offset };
   }
 
@@ -573,6 +658,8 @@ export class SpotifyClient {
   }
 }
 
+export const TIME_RANGES = ["short_term", "medium_term", "long_term"] as const;
+export type TimeRange = (typeof TIME_RANGES)[number];
 export const PLAYLIST_NAME_MAX = 100;
 export const PLAYLIST_ADD_MAX = 100;
 const PLAYLIST_WRITE_SCOPES = [SCOPE.playlistModifyPrivate, SCOPE.playlistModifyPublic];

@@ -20,6 +20,8 @@ describe("tools per mode (#11)", () => {
       "get_playlist_items",
       "get_saved_tracks",
       "check_saved_tracks",
+      "get_recently_played",
+      "get_top_items",
       "save_tracks",
       "remove_saved_tracks",
     ]);

@@ -8,7 +8,11 @@ import {
   GET_SAVED_TRACKS_TOOL,
   REMOVE_SAVED_TRACKS_TOOL,
   SAVE_TRACKS_TOOL,
+  GET_RECENTLY_PLAYED_TOOL,
+  GET_TOP_ITEMS_TOOL,
   registerLibraryRead,
+  registerRecentlyPlayed,
+  registerTopItems,
   registerLibraryWrite,
 } from "./library.js";
 import {
@@ -59,6 +63,12 @@ const TOOL_GROUPS: readonly ToolGroup[] = [
     scopes: [SCOPE.libraryRead],
     register: registerLibraryRead,
   },
+  {
+    names: [GET_RECENTLY_PLAYED_TOOL],
+    scopes: [SCOPE.recentlyPlayed],
+    register: registerRecentlyPlayed,
+  },
+  { names: [GET_TOP_ITEMS_TOOL], scopes: [SCOPE.topRead], register: registerTopItems },
   {
     names: [SAVE_TRACKS_TOOL, REMOVE_SAVED_TRACKS_TOOL],
     scopes: [SCOPE.libraryModify],

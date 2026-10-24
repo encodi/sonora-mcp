@@ -37,6 +37,8 @@ Sprint 1 is implemented (see [Roadmap](#roadmap)). Not yet published to npm: ins
 | `remove_saved_tracks`   | `library`              | Un-save up to 40 tracks (`DELETE /me/library`)                                                    |
 | `create_playlist`       | `playlists`            | Create an empty playlist (private by default; `POST /me/playlists`)                               |
 | `add_items_to_playlist` | `playlists`            | Add up to 100 tracks/episodes to a playlist you own/collaborate on (`POST /playlists/{id}/items`) |
+| `get_recently_played`   | `library`              | Recently played tracks, newest first (cursor-based: `before`/`after`, limit ≤ 50)                 |
+| `get_top_items`         | `library`              | Top tracks or artists (`time_range`, paged, limit ≤ 50)                                           |
 
 ## Modes and scopes
 
