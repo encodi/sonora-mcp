@@ -146,7 +146,44 @@ describe("tool behaviour", () => {
   it("now_playing reports nothing playing on 204", async () => {
     const { client } = await connect("read-only", [new Response(null, { status: 204 })]);
     const res = await client.callTool({ name: "now_playing", arguments: {} });
-    expect(JSON.parse(text(res))).toMatchObject({ playing: false });
+    const body = JSON.parse(text(res)) as Record<string, unknown>;
+    expect(body).toMatchObject({ playing: false, activeDevice: false });
+    expect(body["message"]).toMatch(/No active Spotify device/);
+  });
+
+  it("now_playing reports an active device with nothing loaded, naming only the device (#35)", async () => {
+    const { client } = await connect("read-only", [
+      jsonResponse({
+        is_playing: false,
+        device: {
+          id: "0123456789abcdef0123456789abcdef01234567",
+          name: "Pixel 8 Pro",
+          type: "Smartphone",
+          is_active: true,
+          volume_percent: 40,
+        },
+        item: null,
+      }),
+    ]);
+    const res = await client.callTool({ name: "now_playing", arguments: {} });
+    const raw = text(res);
+    expect(JSON.parse(raw)).toMatchObject({
+      playing: false,
+      activeDevice: true,
+      device: { name: "Pixel 8 Pro", type: "Smartphone", volumePercent: 40 },
+    });
+    expect((JSON.parse(raw) as { message: string }).message).toBe(
+      'Device "Pixel 8 Pro" is active, but nothing is loaded or playing on it.',
+    );
+    expect(raw).not.toMatch(/0123456789abcdef|"id"|token/i);
+  });
+
+  it("now_playing treats an empty state without a device as no active device", async () => {
+    const { client } = await connect("read-only", [
+      jsonResponse({ is_playing: false, item: null, device: null }),
+    ]);
+    const res = await client.callTool({ name: "now_playing", arguments: {} });
+    expect(JSON.parse(text(res))).toMatchObject({ playing: false, activeDevice: false });
   });
 
   it("now_playing summarises the current track", async () => {
