@@ -29,6 +29,7 @@ Sprint 1 is implemented (see [Roadmap](#roadmap)). Not yet published to npm: ins
 | `pause`             | `playback` | Pause playback                                                                             |
 | `list_devices`      | all        | List Spotify Connect devices (id, name, type, active)                                      |
 | `transfer_playback` | `playback` | Move playback to a device (`device_id` from `list_devices`, optional `play`)               |
+| `get_playlists`     | `library`, `playlists` | List the user's playlists (paged, limit ≤ 50) |
 
 ## Modes and scopes
 

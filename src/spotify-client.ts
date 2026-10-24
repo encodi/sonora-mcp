@@ -10,6 +10,10 @@ export const API_BASE = "https://api.spotify.com/v1";
 export const SEARCH_MAX_LIMIT = 10;
 export const SEARCH_DEFAULT_LIMIT = 5;
 
+/** Paged list endpoints (playlists, library, history, top items): limit 1-50. */
+export const PAGE_MAX_LIMIT = 50;
+export const PAGE_DEFAULT_LIMIT = 20;
+
 export const SEARCH_TYPES = ["track", "album", "artist", "playlist"] as const;
 export type SearchType = (typeof SEARCH_TYPES)[number];
 
@@ -53,6 +57,25 @@ const Playlist = z.object({
 // Spotify may return `null` entries inside item arrays; drop them.
 const page = <T extends z.ZodType>(item: T) =>
   z.object({ items: z.array(item.nullable()), total: z.number().optional() });
+
+const PlaylistSummary = z.object({
+  id: z.string(),
+  name: z.string(),
+  uri: z.string(),
+  description: z.string().nullish(),
+  owner: z.object({ id: z.string().optional(), display_name: z.string().nullish() }).optional(),
+  public: z.boolean().nullish(),
+  collaborative: z.boolean().optional(),
+  // Feb 2026: `tracks` was renamed `items` (the old name is deprecated but may still be sent).
+  items: z.object({ total: z.number() }).nullish(),
+  tracks: z.object({ total: z.number() }).nullish(),
+  external_urls: Urls,
+});
+
+const PlaylistsResponse = z.object({
+  items: z.array(PlaylistSummary.nullable()),
+  total: z.number().optional(),
+});
 
 const SearchResponse = z.object({
   tracks: page(Track).optional(),
@@ -109,6 +132,13 @@ export type SearchResults = {
   artists?: z.infer<typeof Artist>[];
   playlists?: z.infer<typeof Playlist>[];
 };
+export type PlaylistSummaryData = z.infer<typeof PlaylistSummary>;
+export interface Paged<T> {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
+}
 export type PlayerStateData = z.infer<typeof PlayerState>;
 export type DeviceData = z.infer<typeof DevicesResponse>["devices"][number];
 
@@ -174,6 +204,21 @@ export class SpotifyClient {
       ...(artists && { artists: compact(artists.items) }),
       ...(playlists && { playlists: compact(playlists.items) }),
     };
+  }
+
+  /** The current user's playlists (owned, followed and collaborative). */
+  async getPlaylists(
+    args: { limit?: number; offset?: number } = {},
+  ): Promise<Paged<PlaylistSummaryData>> {
+    const { limit, offset } = checkPage(args);
+    const raw = await this.request("GET", "/me/playlists", {
+      scopes: [SCOPE.playlistReadPrivate, SCOPE.playlistReadCollaborative],
+      query: { limit, offset },
+    });
+    const parsed = PlaylistsResponse.safeParse(raw);
+    if (!parsed.success) throw unexpected("playlists");
+    const items = compact(parsed.data.items);
+    return { items, total: parsed.data.total ?? offset + items.length, limit, offset };
   }
 
   /** `null` when nothing is playing / no active device (HTTP 204). */
@@ -312,6 +357,19 @@ export class SpotifyClient {
       );
     }
   }
+}
+
+/** Validates paging locally (clear message instead of Spotify's bare 400). */
+function checkPage(args: { limit?: number; offset?: number }): { limit: number; offset: number } {
+  const limit = args.limit ?? PAGE_DEFAULT_LIMIT;
+  const offset = args.offset ?? 0;
+  if (!Number.isInteger(limit) || limit < 1 || limit > PAGE_MAX_LIMIT) {
+    throw new SonoraError("config", `limit must be an integer between 1 and ${PAGE_MAX_LIMIT}.`);
+  }
+  if (!Number.isInteger(offset) || offset < 0) {
+    throw new SonoraError("config", "offset must be an integer >= 0.");
+  }
+  return { limit, offset };
 }
 
 function unexpected(what: string): SonoraError {
