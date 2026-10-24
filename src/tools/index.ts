@@ -4,6 +4,14 @@ import type { SpotifyClient } from "../spotify-client.js";
 import { LIST_DEVICES_TOOL, registerDevices } from "./devices.js";
 import { NOW_PLAYING_TOOL, registerNowPlaying } from "./now-playing.js";
 import {
+  CHECK_SAVED_TRACKS_TOOL,
+  GET_SAVED_TRACKS_TOOL,
+  REMOVE_SAVED_TRACKS_TOOL,
+  SAVE_TRACKS_TOOL,
+  registerLibraryRead,
+  registerLibraryWrite,
+} from "./library.js";
+import {
   GET_PLAYLIST_ITEMS_TOOL,
   GET_PLAYLISTS_TOOL,
   registerPlaylistItems,
@@ -37,6 +45,16 @@ const TOOL_GROUPS: readonly ToolGroup[] = [
     names: [GET_PLAYLIST_ITEMS_TOOL],
     scopes: [SCOPE.playlistReadPrivate],
     register: registerPlaylistItems,
+  },
+  {
+    names: [GET_SAVED_TRACKS_TOOL, CHECK_SAVED_TRACKS_TOOL],
+    scopes: [SCOPE.libraryRead],
+    register: registerLibraryRead,
+  },
+  {
+    names: [SAVE_TRACKS_TOOL, REMOVE_SAVED_TRACKS_TOOL],
+    scopes: [SCOPE.libraryModify],
+    register: registerLibraryWrite,
   },
   {
     names: [PLAY_TOOL, PAUSE_TOOL, TRANSFER_PLAYBACK_TOOL],
