@@ -10,3 +10,7 @@ versioning: [SemVer](https://semver.org).
 - Project skeleton, CI, governance docs.
 - PKCE login/logout/status, secure token storage with refresh.
 - Tools: `search`, `now_playing`, `play`, `pause` (playback mode only).
+
+### Fixed
+
+- `search`: `types` is now documented as an array (single string accepted), the singular `type` is an alias, and unknown parameters are rejected instead of silently falling back to tracks (#32).

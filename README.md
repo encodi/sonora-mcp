@@ -21,12 +21,12 @@ Sprint 1 is implemented (see [Roadmap](#roadmap)). Not yet published to npm: ins
 
 ## Tools
 
-| Tool          | Mode       | Description                                                               |
-| ------------- | ---------- | ------------------------------------------------------------------------- |
-| `search`      | all        | Search tracks, albums, artists, playlists (`limit` 1–10, `offset` paging) |
-| `now_playing` | all        | Current track/episode, progress and device                                |
-| `play`        | `playback` | Start/resume playback, optionally a Spotify URI and device                |
-| `pause`       | `playback` | Pause playback                                                            |
+| Tool          | Mode       | Description                                                                              |
+| ------------- | ---------- | ---------------------------------------------------------------------------------------- |
+| `search`      | all        | Search tracks, albums, artists, playlists (`types` array, `limit` 1–10, `offset` paging) |
+| `now_playing` | all        | Current track/episode, progress and device                                               |
+| `play`        | `playback` | Start/resume playback, optionally a Spotify URI and device                               |
+| `pause`       | `playback` | Pause playback                                                                           |
 
 ## Modes and scopes
 
