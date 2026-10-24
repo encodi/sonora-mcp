@@ -122,8 +122,19 @@ export class SpotifyClient {
   private readonly tokens: TokenProvider;
   private readonly fetchFn: FetchLike;
   private readonly baseUrl: string;
+  private readonly transferSettleMs: number;
+  private readonly sleep: (ms: number) => Promise<void>;
 
-  constructor(args: { tokens: TokenProvider; fetch?: FetchLike; baseUrl?: string }) {
+  constructor(args: {
+    tokens: TokenProvider;
+    fetch?: FetchLike;
+    baseUrl?: string;
+    /** Pause between a transfer and the following play (Spotify needs a moment to register the device). */
+    transferSettleMs?: number;
+    sleep?: (ms: number) => Promise<void>;
+  }) {
+    this.transferSettleMs = args.transferSettleMs ?? 800;
+    this.sleep = args.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
     this.tokens = args.tokens;
     this.fetchFn = args.fetch ?? fetch;
     this.baseUrl = args.baseUrl ?? API_BASE;
@@ -173,13 +184,45 @@ export class SpotifyClient {
     return parsed.data;
   }
 
-  async play(args: { uri?: string; deviceId?: string } = {}): Promise<void> {
+  /**
+   * Track/episode URIs go in `uris`; album/artist/playlist/show URIs go in `context_uri`.
+   * `offset` is only meaningful for album/playlist contexts (Spotify ignores or rejects it otherwise),
+   * so it is refused locally for anything else.
+   * `transferFirst` wakes the device with PUT /me/player (no autoplay), waits briefly, then plays.
+   */
+  async play(
+    args: {
+      uri?: string;
+      deviceId?: string;
+      offset?: { position: number } | { uri: string };
+      positionMs?: number;
+      transferFirst?: boolean;
+    } = {},
+  ): Promise<void> {
+    const kind = args.uri === undefined ? undefined : /^spotify:([a-z]+):/.exec(args.uri)?.[1];
+    if (args.offset !== undefined && kind !== "album" && kind !== "playlist") {
+      throw new SonoraError(
+        "config",
+        "`offset` only works together with an album or playlist `uri` (it picks the starting track inside that context).",
+      );
+    }
+    if (args.transferFirst === true) {
+      if (args.deviceId === undefined) {
+        throw new SonoraError(
+          "config",
+          "`transfer_first` needs a `device_id` (get it from `list_devices`).",
+        );
+      }
+      await this.transferPlayback({ deviceId: args.deviceId, play: false });
+      await this.sleep(this.transferSettleMs);
+    }
     let body: Record<string, unknown> | undefined;
     if (args.uri !== undefined) {
-      const kind = /^spotify:([a-z]+):/.exec(args.uri)?.[1];
       body =
         kind === "track" || kind === "episode" ? { uris: [args.uri] } : { context_uri: args.uri };
     }
+    if (args.offset !== undefined) body = { ...body, offset: args.offset };
+    if (args.positionMs !== undefined) body = { ...body, position_ms: args.positionMs };
     await this.request("PUT", "/me/player/play", {
       query: { device_id: args.deviceId },
       ...(body !== undefined && { body }),

@@ -21,14 +21,14 @@ Sprint 1 is implemented (see [Roadmap](#roadmap)). Not yet published to npm: ins
 
 ## Tools
 
-| Tool                | Mode       | Description                                                                              |
-| ------------------- | ---------- | ---------------------------------------------------------------------------------------- |
-| `search`            | all        | Search tracks, albums, artists, playlists (`types` array, `limit` 1–10, `offset` paging) |
-| `now_playing`       | all        | Current track/episode, progress and device                                               |
-| `play`              | `playback` | Start/resume playback, optionally a Spotify URI and device                               |
-| `pause`             | `playback` | Pause playback                                                                           |
-| `list_devices`      | all        | List Spotify Connect devices (id, name, type, active)                                    |
-| `transfer_playback` | `playback` | Move playback to a device (`device_id` from `list_devices`, optional `play`)             |
+| Tool                | Mode       | Description                                                                                |
+| ------------------- | ---------- | ------------------------------------------------------------------------------------------ |
+| `search`            | all        | Search tracks, albums, artists, playlists (`types` array, `limit` 1–10, `offset` paging)   |
+| `now_playing`       | all        | Current track/episode, progress and device                                                 |
+| `play`              | `playback` | Start/resume playback: Spotify URI, `offset`, `position_ms`, `device_id`, `transfer_first` |
+| `pause`             | `playback` | Pause playback                                                                             |
+| `list_devices`      | all        | List Spotify Connect devices (id, name, type, active)                                      |
+| `transfer_playback` | `playback` | Move playback to a device (`device_id` from `list_devices`, optional `play`)               |
 
 ## Modes and scopes
 
@@ -126,6 +126,22 @@ The Client ID is not a secret, but keep it in your local client config, not in a
 | `SONORA_MODE`           | `read-only`  | `read-only` or `playback`                                          |
 | `SONORA_LOG_LEVEL`      | `info`       | `error`, `warn`, `info`, `debug` (logs go to **stderr**, redacted) |
 | `XDG_CONFIG_HOME`       | `~/.config`  | Base directory for `sonora-mcp/tokens.json`                        |
+
+## Troubleshooting
+
+### `play` says ok but the phone (Android) stays silent
+
+Spotify answers `204` as soon as it _accepts_ the command; it does not wait for the device to obey. Mobile
+apps that are idle or backgrounded can ignore a remote `play`, while the Web Player and desktop apps usually
+do not (investigation in [#34](https://github.com/encodi/sonora-mcp/issues/34)). Things to try, in order:
+
+1. Open the Spotify app on the phone and start any track for a few seconds, then call `play` while it is active.
+2. Call `list_devices`, copy the phone's `id`, and call `play` with `device_id` and `transfer_first: true`
+   (it transfers playback to the phone without autoplay, waits ~0.8 s, then plays).
+3. Or do it by hand: `transfer_playback` with `play: true`, then `play`.
+4. Always confirm with `now_playing`: it tells "no active device" apart from "device active, nothing loaded".
+
+`play` only reports that Spotify accepted the command, so a silent device is not an error on our side.
 
 ## Security
 

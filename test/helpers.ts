@@ -68,7 +68,11 @@ export async function connect(mode: Mode, responses: Response[] = []) {
   const fetchMock = vi.fn<FetchLike>(() =>
     Promise.resolve(responses.shift() ?? new Response(null, { status: 204 })),
   );
-  const spotify = new SpotifyClient({ tokens: staticTokens(), fetch: fetchMock });
+  const spotify = new SpotifyClient({
+    tokens: staticTokens(),
+    fetch: fetchMock,
+    sleep: () => Promise.resolve(),
+  });
   const server = createMcpServer({ client: spotify, mode, version: "0.0.0-test" });
   const [clientT, serverT] = InMemoryTransport.createLinkedPair();
   const client = new Client({ name: "test", version: "0.0.0" });
