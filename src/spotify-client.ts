@@ -89,6 +89,19 @@ const PlayerState = z.object({
     .nullish(),
 });
 
+const DevicesResponse = z.object({
+  devices: z.array(
+    z.object({
+      id: z.string().nullish(),
+      name: z.string(),
+      type: z.string().optional(),
+      is_active: z.boolean().optional(),
+      is_restricted: z.boolean().optional(),
+      volume_percent: z.number().nullish(),
+    }),
+  ),
+});
+
 export type SearchResults = {
   tracks?: z.infer<typeof Track>[];
   albums?: z.infer<typeof Album>[];
@@ -96,6 +109,7 @@ export type SearchResults = {
   playlists?: z.infer<typeof Playlist>[];
 };
 export type PlayerStateData = z.infer<typeof PlayerState>;
+export type DeviceData = z.infer<typeof DevicesResponse>["devices"][number];
 
 const compact = <T>(items: (T | null)[]): T[] => items.filter((i): i is T => i !== null);
 
@@ -169,6 +183,21 @@ export class SpotifyClient {
     await this.request("PUT", "/me/player/play", {
       query: { device_id: args.deviceId },
       ...(body !== undefined && { body }),
+    });
+  }
+
+  /** Devices Spotify currently knows about for this account (active or not). */
+  async listDevices(): Promise<DeviceData[]> {
+    const raw = await this.request("GET", "/me/player/devices");
+    const parsed = DevicesResponse.safeParse(raw);
+    if (!parsed.success) throw unexpected("devices");
+    return parsed.data.devices;
+  }
+
+  /** Moves playback to one device. Spotify accepts exactly one id in `device_ids`. */
+  async transferPlayback(args: { deviceId: string; play?: boolean }): Promise<void> {
+    await this.request("PUT", "/me/player", {
+      body: { device_ids: [args.deviceId], ...(args.play !== undefined && { play: args.play }) },
     });
   }
 
