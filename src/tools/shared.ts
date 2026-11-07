@@ -1,5 +1,7 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { z } from "zod";
 import { SonoraError } from "../errors.js";
+import { PAGE_DEFAULT_LIMIT, PAGE_MAX_LIMIT } from "../spotify-client.js";
 import { redactSecrets } from "../redact.js";
 
 export function jsonResult(data: unknown): CallToolResult {
@@ -21,4 +23,32 @@ export async function guarded(body: () => Promise<CallToolResult>): Promise<Call
   } catch (error) {
     return errorResult(error);
   }
+}
+
+/** Shared `limit` / `offset` input for paged tools (Spotify allows limit 1-50). */
+export const pagingInput = {
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(PAGE_MAX_LIMIT)
+    .default(PAGE_DEFAULT_LIMIT)
+    .describe(`Items per page, 1-${PAGE_MAX_LIMIT}.`),
+  offset: z.number().int().min(0).default(0).describe("Index of the first item (for paging)."),
+};
+
+/** Standard paged output: `hasMore` tells the model whether to ask for the next offset. */
+export function pageOutput(
+  page: { items: unknown[]; total: number; limit: number; offset: number },
+  key = "items",
+): Record<string, unknown> {
+  const nextOffset = page.offset + page.items.length;
+  return {
+    total: page.total,
+    offset: page.offset,
+    limit: page.limit,
+    hasMore: nextOffset < page.total,
+    ...(nextOffset < page.total && { nextOffset }),
+    [key]: page.items,
+  };
 }

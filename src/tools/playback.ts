@@ -23,7 +23,30 @@ export const playInput = {
     .describe(
       "What to play (a track/episode URI or an album/artist/playlist/show URI). Omit to resume.",
     ),
+  offset: z
+    .union([
+      z.strictObject({ position: z.number().int().min(0) }),
+      z.strictObject({
+        uri: z.string().regex(/^spotify:track:[A-Za-z0-9]{10,40}$/, "Expected spotify:track:<id>"),
+      }),
+    ])
+    .optional()
+    .describe(
+      "Where to start inside an album/playlist `uri`: `{position: 0}` (0-based) or `{uri: spotify:track:...}`.",
+    ),
+  position_ms: z
+    .number()
+    .int()
+    .min(0)
+    .optional()
+    .describe("Start this many milliseconds into the track."),
   device_id: deviceId,
+  transfer_first: z
+    .boolean()
+    .optional()
+    .describe(
+      "Wake/activate `device_id` with a transfer (no autoplay) before playing. Try it when `play` returns ok but a phone (e.g. the Android app) stays silent. Requires `device_id`.",
+    ),
 };
 
 export const pauseInput = { device_id: deviceId };
@@ -47,13 +70,22 @@ export function registerPlayback(server: McpServer, client: SpotifyClient): void
       inputSchema: playInput,
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     },
-    ({ uri, device_id }) =>
+    ({ uri, device_id, offset, position_ms, transfer_first }) =>
       guarded(async () => {
         await client.play({
           ...(uri !== undefined && { uri }),
           ...(device_id !== undefined && { deviceId: device_id }),
+          ...(offset !== undefined && { offset }),
+          ...(position_ms !== undefined && { positionMs: position_ms }),
+          ...(transfer_first !== undefined && { transferFirst: transfer_first }),
         });
-        return jsonResult({ ok: true, action: uri === undefined ? "resumed" : "playing", uri });
+        return jsonResult({
+          ok: true,
+          action: uri === undefined ? "resumed" : "playing",
+          uri,
+          ...(transfer_first === true && { transferredFirst: true }),
+          note: "Spotify accepted the command (HTTP 2xx). Use now_playing to confirm the device actually started.",
+        });
       }),
   );
 

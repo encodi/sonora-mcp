@@ -11,6 +11,13 @@ versioning: [SemVer](https://semver.org).
 - PKCE login/logout/status, secure token storage with refresh.
 - Tools: `search`, `now_playing`, `play`, `pause` (playback mode only).
 - Tools `list_devices` (all modes) and `transfer_playback` (playback mode) (#18).
+- `play`: `offset` (album/playlist), `position_ms` and `transfer_first` (wake a device before playing); README troubleshooting for silent Android devices (#34).
+- Modes `library` and `playlists`, combinable with commas (`--mode library,playback`); per-tool scope check with a clear `login --mode ...` error; ADR 0001 (#11).
+- Tool `get_playlists` (modes `library`, `playlists`): paged list (limit ≤ 50) of the user's playlists in a compact format (#12).
+- Tool `get_playlist_items` (modes `library`, `playlists`): paged items of a playlist via `/playlists/{id}/items` (Feb 2026 API), with a clear message for non-owned playlists (#13).
+- Tools `get_saved_tracks`, `check_saved_tracks`, `save_tracks` and `remove_saved_tracks` (mode `library`) using the Feb 2026 generic `/me/library` endpoints, max 40 tracks per call (#14).
+- Tools `create_playlist` and `add_items_to_playlist` (mode `playlists`): Feb 2026 endpoints `POST /me/playlists` and `POST /playlists/{id}/items`, private by default, max 100 items per call (#15).
+- Tools `get_recently_played` and `get_top_items` (mode `library`) with limit ≤ 50, cursor paging for recent plays and `time_range` for top items (#16).
 
 ### Fixed
 

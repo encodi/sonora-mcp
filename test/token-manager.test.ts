@@ -66,6 +66,35 @@ describe("TokenManager", () => {
     await expect(manager.getAccessToken()).rejects.toThrow(/login --mode playback/);
   });
 
+  it("checks per-request scopes and names the mode to log in with (#11)", async () => {
+    const { manager } = await setup(
+      sampleTokens({ scopes: [...READ, "user-modify-playback-state"] }),
+    );
+    // Base + playback granted: fine, and a request with no extra scopes is fine too.
+    await expect(manager.getAccessToken({ scopes: ["user-modify-playback-state"] })).resolves.toBe(
+      "access-token-AAA",
+    );
+    // A library scope is missing: only requests that need it fail, with a hint derived from the scope.
+    await expect(manager.getAccessToken({ scopes: ["user-library-read"] })).rejects.toThrow(
+      /user-library-read.*login --mode library/,
+    );
+    await expect(manager.getAccessToken()).resolves.toBe("access-token-AAA");
+  });
+
+  it("words the hint with the server's configured modes when given", async () => {
+    const store = new TokenStore((await tempDir()) + "/sonora-mcp");
+    await store.save(sampleTokens());
+    const manager = new TokenManager({
+      store,
+      clientId: FAKE_CLIENT_ID,
+      requiredScopes: READ,
+      modes: ["library", "playback"],
+    });
+    await expect(manager.getAccessToken({ scopes: ["user-library-read"] })).rejects.toThrow(
+      /login --mode library,playback/,
+    );
+  });
+
   it("rejects a token issued for another client id", async () => {
     const { manager } = await setup(sampleTokens({ clientId: "someotherclientid1234" }));
     await expect(manager.getAccessToken()).rejects.toThrow(/different SPOTIFY_CLIENT_ID/);
