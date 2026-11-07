@@ -1,3 +1,10 @@
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import { vi } from "vitest";
+import type { FetchLike } from "../src/auth.js";
+import type { Mode } from "../src/config.js";
+import { createServer as createMcpServer } from "../src/server.js";
+import { SpotifyClient } from "../src/spotify-client.js";
 import { mkdtemp } from "node:fs/promises";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
@@ -54,4 +61,33 @@ export function jsonResponse(body: unknown, init: ResponseInit = {}): Response {
     headers: { "Content-Type": "application/json" },
     ...init,
   });
+}
+
+/** In-memory MCP client/server pair; `fetch` is mocked with the given responses (204 when exhausted). */
+export async function connect(mode: Mode, responses: Response[] = []) {
+  const fetchMock = vi.fn<FetchLike>(() =>
+    Promise.resolve(responses.shift() ?? new Response(null, { status: 204 })),
+  );
+  const spotify = new SpotifyClient({ tokens: staticTokens(), fetch: fetchMock });
+  const server = createMcpServer({ client: spotify, mode, version: "0.0.0-test" });
+  const [clientT, serverT] = InMemoryTransport.createLinkedPair();
+  const client = new Client({ name: "test", version: "0.0.0" });
+  await Promise.all([server.connect(serverT), client.connect(clientT)]);
+  return { client, fetchMock };
+}
+
+export const text = (result: unknown): string =>
+  ((result as { content: { text: string }[] }).content[0] as { text: string }).text;
+
+/** Method, URL and parsed JSON body of the n-th mocked fetch call. */
+export function callOf(
+  fetchMock: { mock: { calls: unknown[][] } },
+  n: number,
+): { method: string; url: URL; body: unknown } {
+  const [url, init] = fetchMock.mock.calls[n] as [URL, RequestInit | undefined];
+  return {
+    method: init?.method ?? "GET",
+    url: new URL(String(url)),
+    body: typeof init?.body === "string" ? (JSON.parse(init.body) as unknown) : undefined,
+  };
 }

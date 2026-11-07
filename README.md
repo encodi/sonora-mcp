@@ -21,19 +21,21 @@ Sprint 1 is implemented (see [Roadmap](#roadmap)). Not yet published to npm: ins
 
 ## Tools
 
-| Tool          | Mode       | Description                                                                              |
-| ------------- | ---------- | ---------------------------------------------------------------------------------------- |
-| `search`      | all        | Search tracks, albums, artists, playlists (`types` array, `limit` 1–10, `offset` paging) |
-| `now_playing` | all        | Current track/episode, progress and device                                               |
-| `play`        | `playback` | Start/resume playback, optionally a Spotify URI and device                               |
-| `pause`       | `playback` | Pause playback                                                                           |
+| Tool                | Mode       | Description                                                                              |
+| ------------------- | ---------- | ---------------------------------------------------------------------------------------- |
+| `search`            | all        | Search tracks, albums, artists, playlists (`types` array, `limit` 1–10, `offset` paging) |
+| `now_playing`       | all        | Current track/episode, progress and device                                               |
+| `play`              | `playback` | Start/resume playback, optionally a Spotify URI and device                               |
+| `pause`             | `playback` | Pause playback                                                                           |
+| `list_devices`      | all        | List Spotify Connect devices (id, name, type, active)                                    |
+| `transfer_playback` | `playback` | Move playback to a device (`device_id` from `list_devices`, optional `play`)             |
 
 ## Modes and scopes
 
-| Mode (default first) | Scopes requested                                          | Tools                   |
-| -------------------- | --------------------------------------------------------- | ----------------------- |
-| `read-only`          | `user-read-playback-state`, `user-read-currently-playing` | `search`, `now_playing` |
-| `playback`           | the two above + `user-modify-playback-state`              | + `play`, `pause`       |
+| Mode (default first) | Scopes requested                                          | Tools                                   |
+| -------------------- | --------------------------------------------------------- | --------------------------------------- |
+| `read-only`          | `user-read-playback-state`, `user-read-currently-playing` | `search`, `now_playing`, `list_devices` |
+| `playback`           | the two above + `user-modify-playback-state`              | + `play`, `pause`, `transfer_playback`  |
 
 Choose with `SONORA_MODE` or `--mode` (applies to both `login` and `serve`). If you log in as `read-only` and
 later start the server as `playback`, tools return a clear message asking you to run

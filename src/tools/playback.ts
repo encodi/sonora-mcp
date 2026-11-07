@@ -5,12 +5,13 @@ import { guarded, jsonResult } from "./shared.js";
 
 export const PLAY_TOOL = "play";
 export const PAUSE_TOOL = "pause";
+export const TRANSFER_PLAYBACK_TOOL = "transfer_playback";
 
 const SPOTIFY_URI = /^spotify:(track|episode|album|artist|playlist|show):[A-Za-z0-9]{10,40}$/;
 
-const deviceId = z
-  .string()
-  .regex(/^[A-Za-z0-9]{8,64}$/, "Invalid device id")
+const deviceIdString = z.string().regex(/^[A-Za-z0-9]{8,64}$/, "Invalid device id");
+
+const deviceId = deviceIdString
   .optional()
   .describe("Optional Spotify device id. Defaults to the active device.");
 
@@ -26,6 +27,14 @@ export const playInput = {
 };
 
 export const pauseInput = { device_id: deviceId };
+
+export const transferPlaybackInput = {
+  device_id: deviceIdString.describe("Target device id, as returned by `list_devices`."),
+  play: z
+    .boolean()
+    .optional()
+    .describe("true: start playing on the device after the transfer. Default: keep current state."),
+};
 
 /** Write tools: only registered in `playback` mode. */
 export function registerPlayback(server: McpServer, client: SpotifyClient): void {
@@ -65,6 +74,31 @@ export function registerPlayback(server: McpServer, client: SpotifyClient): void
       guarded(async () => {
         await client.pause(device_id !== undefined ? { deviceId: device_id } : {});
         return jsonResult({ ok: true, action: "paused" });
+      }),
+  );
+
+  server.registerTool(
+    TRANSFER_PLAYBACK_TOOL,
+    {
+      title: "Transfer playback",
+      description:
+        "Move playback to another of the user's Spotify devices (see `list_devices`). Useful to wake a phone or speaker before `play`. Requires Spotify Premium.",
+      inputSchema: transferPlaybackInput,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
+    },
+    ({ device_id, play }) =>
+      guarded(async () => {
+        await client.transferPlayback({
+          deviceId: device_id,
+          ...(play !== undefined && { play }),
+        });
+        // The id is deliberately not echoed back (ids stay out of logs and transcripts).
+        return jsonResult({ ok: true, action: "transferred", play: play ?? null });
       }),
   );
 }
